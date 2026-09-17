@@ -1,0 +1,142 @@
+---
+/**
+ * עמוד צ'קאאוט — שלד ראשוני מול mock provider.
+ *
+ * הגנת שער 2 ברמת השרת: אם CHECKOUT_ENABLED=false (ברירת מחדל, עד שסוכן 1
+ * חותם ב-state/LOAD-TEST-LOG.md), מפנה אוטומטית ל-/waitlist גם אם מישהו
+ * מגיע ישירות לכתובת הזו — לא סומכים רק על כך שה-CTA לא מקשר לכאן.
+ */
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { CHECKOUT_ENABLED, PRODUCT } from "../../config";
+
+if (!CHECKOUT_ENABLED) {
+  return Astro.redirect("/waitlist");
+}
+---
+
+<BaseLayout title={`רכישה — ${PRODUCT.name}`}>
+  <main class="wrap">
+    <h1>השלמת רכישה</h1>
+    <p class="price">{PRODUCT.priceILS} ₪ · {PRODUCT.name}</p>
+
+    <form id="checkout-form">
+      <label>
+        שם מלא
+        <input type="text" name="fullName" required autocomplete="name" />
+      </label>
+      <label>
+        טלפון נייד
+        <input type="tel" name="phone" required autocomplete="tel" inputmode="tel" />
+      </label>
+      <label>
+        אימייל
+        <input type="email" name="email" required autocomplete="email" />
+      </label>
+
+      <!--
+        TODO(BLOCKERS.md #2): כאן ייכנס ה-widget/iframe/redirect בפועל של
+        ספק התשלום שייבחר (Grow/Cardcom/Meshulam) לפי docs/ARCHITECTURE.md.
+        כרגע: כפתור אחד שמדבר עם /api/checkout/create שמריץ MockPaymentProvider.
+      -->
+      <button type="submit" id="pay-btn">שלם/י {PRODUCT.priceILS} ₪</button>
+    </form>
+    <p id="checkout-status" role="status" aria-live="polite"></p>
+  </main>
+</BaseLayout>
+
+<script>
+  // מפתח אידמפוטנטיות נוצר פעם אחת לטעינת העמוד, ולא מתחדש בלחיצות חוזרות
+  // על אותו טופס — כך שדאבל-קליק / retry אחרי ניתוק לא פותחים חיוב כפול.
+  // ראה src/lib/payments/idempotency.ts.
+  const idempotencyKey =
+    (crypto as any).randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+  const orderId = `order_${idempotencyKey}`;
+
+  const form = document.getElementById("checkout-form") as HTMLFormElement | null;
+  const statusEl = document.getElementById("checkout-status");
+  const payBtn = document.getElementById("pay-btn") as HTMLButtonElement | null;
+
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!payBtn || payBtn.disabled) return; // הגנת idempotency גם בצד לקוח
+    payBtn.disabled = true;
+    payBtn.textContent = "מעבד תשלום...";
+    if (statusEl) statusEl.textContent = "";
+
+    const data = new FormData(form);
+    try {
+      const res = await fetch("/api/checkout/create", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          orderId,
+          idempotencyKey,
+          amountAgorot: 3300,
+          customer: {
+            fullName: data.get("fullName"),
+            phone: data.get("phone"),
+            email: data.get("email"),
+          },
+        }),
+      });
+      const result = await res.json();
+
+      if (result.status === "approved") {
+        window.location.href = "/checkout/success";
+        return;
+      }
+      if (statusEl) {
+        statusEl.textContent =
+          result.status === "declined"
+            ? "הכרטיס נדחה. נסי כרטיס אחר."
+            : result.status === "timeout"
+              ? "התשלום לקח יותר מדי זמן. נסי שוב."
+              : result.status === "duplicate_ignored"
+                ? "הבקשה כבר בטיפול, רגע בבקשה..."
+                : "משהו השתבש. נסי שוב בעוד רגע.";
+      }
+    } catch {
+      if (statusEl) statusEl.textContent = "בעיית תקשורת. נסי שוב.";
+    } finally {
+      payBtn.disabled = false;
+      payBtn.textContent = "שלם/י שוב";
+    }
+  });
+</script>
+
+<style>
+  .wrap {
+    max-width: var(--max-content-width);
+    margin: 0 auto;
+    padding: var(--space-6) var(--space-3);
+  }
+  .price {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-lg);
+  }
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+  }
+  input {
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-base);
+    font-size: var(--font-size-base);
+  }
+  button {
+    background: var(--color-primary);
+    color: var(--color-primary-contrast);
+    border: none;
+    border-radius: var(--radius-full);
+    padding: var(--space-3);
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    min-height: 56px;
+  }
+  button:disabled {
+    opacity: 0.6;
+  }
+</style>

@@ -1,0 +1,73 @@
+---
+/**
+ * Hero — פלייסהולדר אגנוסטי לעיצוב.
+ *
+ * מבנה סמנטי בלבד (h1/p/slot לתמונה) בלי הנחות עיצוביות. כשהעיצוב הסופי
+ * יגיע, ה-props/markup לא משתנים — רק tokens.css ו/או ה-<style> כאן.
+ */
+import CTAButton from "./CTAButton.astro";
+
+interface Props {
+  eyebrow?: string;
+  headline: string;
+  subheadline: string;
+  ctaLabel: string;
+  ctaHref: string;
+}
+
+const { eyebrow, headline, subheadline, ctaLabel, ctaHref } = Astro.props;
+---
+
+<section class="hero">
+  <div class="hero__inner">
+    {eyebrow && <p class="hero__eyebrow">{eyebrow}</p>}
+    <h1 class="hero__headline">{headline}</h1>
+    <p class="hero__sub">{subheadline}</p>
+    <div class="hero__media" data-placeholder="design-pending">
+      <!--
+        TODO(BLOCKERS.md #1): כאן נכנס הנכס הוויזואלי המרכזי של דף המכירה
+        (תמונה/וידאו) כשהעיצוב יגיע. עד אז — placeholder ריק כדי לא לנחש
+        עיצוב שלא קיים ולא לפגוע במהירות טעינה עם נכסים זמניים כבדים.
+      -->
+    </div>
+    <CTAButton href={ctaHref} label={ctaLabel} />
+    <p class="hero__price-note">33 ₪ בלבד · גישה מיידית</p>
+  </div>
+</section>
+
+<style>
+  .hero {
+    max-width: var(--max-content-width);
+    margin: 0 auto;
+    padding: var(--space-6) var(--space-3);
+    text-align: center;
+  }
+  .hero__eyebrow {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-base);
+    margin: 0 0 var(--space-2);
+  }
+  .hero__headline {
+    font-family: var(--font-heading);
+    font-size: var(--font-size-2xl);
+    line-height: 1.2;
+    margin: 0 0 var(--space-3);
+  }
+  .hero__sub {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-lg);
+    margin: 0 0 var(--space-4);
+  }
+  .hero__media {
+    background: var(--color-surface);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-base);
+    min-height: 220px;
+    margin-bottom: var(--space-4);
+  }
+  .hero__price-note {
+    color: var(--color-text-muted);
+    margin-top: var(--space-2);
+    font-size: 0.9rem;
+  }
+</style>

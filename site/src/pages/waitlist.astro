@@ -1,0 +1,71 @@
+---
+/**
+ * רשימת המתנה — היעד היחיד המותר ל-CTA כל עוד שער 2 לא נחתם
+ * (docs/QUALITY-GATES.md § שער 2). לא מבצע תשלום, רק אוסף פרטי קשר.
+ *
+ * שילוב עם ספק אמיתי (טופס/CRM) ייקבע ע"י סוכן 8 (חוויית לקוח); כרגע זהו
+ * שלד בלבד עם קריאה ל-mock endpoint מקומי לבדיקה.
+ */
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { PRODUCT } from "../config";
+---
+
+<BaseLayout title={`רשימת המתנה — ${PRODUCT.name}`}>
+  <main class="wrap">
+    <h1>עוד לא פתוח לרכישה</h1>
+    <p class="muted">
+      אנחנו עדיין בבדיקות (עומס + תשלום). השאירו פרטים ותקבלו הודעה ברגע
+      שהקורס נפתח לרכישה.
+    </p>
+    <form id="waitlist-form">
+      <label>
+        אימייל או טלפון
+        <input type="text" name="contact" required />
+      </label>
+      <button type="submit">הצטרפי לרשימת ההמתנה</button>
+    </form>
+    <p id="waitlist-status" role="status"></p>
+  </main>
+</BaseLayout>
+
+<script>
+  // placeholder: כרגע רק מדמה שליחה. חיבור אמיתי (Sheet/CRM/DB) הוא תפקיד
+  // סוכן 8, לא חלק מהאחריות של סוכן 1 (תשלום/עומס).
+  const form = document.getElementById("waitlist-form");
+  const status = document.getElementById("waitlist-status");
+  form?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (status) status.textContent = "תודה! נעדכן אותך ברגע שנפתח.";
+  });
+</script>
+
+<style>
+  .wrap {
+    max-width: var(--max-content-width);
+    margin: 0 auto;
+    padding: var(--space-6) var(--space-3);
+    text-align: center;
+  }
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+  }
+  input {
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-base);
+    font-size: var(--font-size-base);
+  }
+  button {
+    background: var(--color-primary);
+    color: var(--color-primary-contrast);
+    border: none;
+    border-radius: var(--radius-full);
+    padding: var(--space-3);
+    font-size: var(--font-size-lg);
+    font-weight: 700;
+    min-height: 56px;
+  }
+</style>

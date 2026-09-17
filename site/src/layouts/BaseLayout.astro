@@ -1,0 +1,56 @@
+---
+import "../styles/tokens.css";
+
+interface Props {
+  title: string;
+  description?: string;
+}
+
+const { title, description = "" } = Astro.props;
+---
+
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+    <!--
+      הערה לביצועים (קהל מובייל / 3G ישראלי):
+      - שום JS גלובלי לא נטען כאן. אסטרו מגיש HTML סטטי טהור; JS נטען רק
+        בקומפוננטות ספציפיות שבאמת צריכות אינטראקציה (client:* islands),
+        כמו טופס הצ'קאאוט.
+      - שום פונט חיצוני עדיין לא נטען (system font) עד שיגיע פונט המותג,
+        כדי לא לחסום רינדור על רשת איטית עם @font-face לא נחוץ.
+    -->
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
+
+<style is:global>
+  * {
+    box-sizing: border-box;
+  }
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+  }
+  body {
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-body);
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-base);
+  }
+  img {
+    max-width: 100%;
+    display: block;
+  }
+  a {
+    color: inherit;
+  }
+</style>

@@ -1,0 +1,26 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { PRODUCT } from "../../config";
+---
+
+<BaseLayout title={`תודה על הרכישה — ${PRODUCT.name}`}>
+  <main class="wrap">
+    <h1>התשלום התקבל 🎉</h1>
+    <p class="muted">
+      placeholder — כאן ייכנס תהליך מסירת הגישה בפועל (תפקיד סוכן 8: מייל/
+      קישור גישה לקורס). כרגע רק מסך אישור.
+    </p>
+  </main>
+</BaseLayout>
+
+<style>
+  .wrap {
+    max-width: var(--max-content-width);
+    margin: 0 auto;
+    padding: var(--space-6) var(--space-3);
+    text-align: center;
+  }
+  .muted {
+    color: var(--color-text-muted);
+  }
+</style>

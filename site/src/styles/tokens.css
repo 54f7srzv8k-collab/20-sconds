@@ -1,0 +1,51 @@
+/*
+ * Design tokens — placeholder בלבד.
+ *
+ * הקבצים בתיקיית העיצוב הסופית עדיין לא קיימים בריפו (docs/BLOCKERS.md #1).
+ * כל שאר הקוד (קומפוננטות, layout) מפנה רק למשתני ה-CSS האלה ולא לצבעים/
+ * גדלים קשיחים בשום מקום אחר. כשהעיצוב הסופי יגיע — מחליפים את הערכים כאן
+ * (ואולי מוסיפים @font-face לפונט המותג) ו-**זהו**: אין צורך לגעת ב-.astro
+ * files או ב-markup. זו כל המשמעות של "אגנוסטי לעיצוב".
+ */
+
+:root {
+  /* צבעים — placeholder ניטרלי, להחלפה */
+  --color-bg: #faf7f2;
+  --color-surface: #ffffff;
+  --color-text: #1c1a17;
+  --color-text-muted: #6b6560;
+  --color-primary: #b8622a; /* "קפה" placeholder — להחלפה בצבע המותג הסופי */
+  --color-primary-contrast: #ffffff;
+  --color-accent: #2a6b5a;
+  --color-danger: #b3261e;
+  --color-border: #e7e1d8;
+
+  /* טיפוגרפיה — placeholder, פונט מערכת בלבד עד שיגיע פונט המותג */
+  --font-body: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  --font-heading: var(--font-body);
+  --font-size-base: 1rem;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.75rem;
+  --font-size-2xl: 2.25rem;
+  --line-height-base: 1.6;
+
+  /* מרווחים — סקאלה קבועה כדי שקומפוננטות יישארו עקביות */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 1rem;
+  --space-4: 1.5rem;
+  --space-5: 2.5rem;
+  --space-6: 4rem;
+
+  --radius-base: 12px;
+  --radius-full: 999px;
+  --max-content-width: 720px;
+}
+
+/* מוכן ל-dark mode ברגע שהעיצוב הסופי יגדיר פלטה — כרגע לא מופעל בפועל */
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* TODO: להחליף בפלטת dark מהעיצוב הסופי. נשאר כהערה עד אז כדי לא
+       "לנחש" עיצוב שלא קיים. */
+  }
+}
