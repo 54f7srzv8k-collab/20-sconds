@@ -4,11 +4,22 @@ import { PRODUCT } from "../../config";
 ---
 
 <BaseLayout title={`תודה על הרכישה — ${PRODUCT.name}`}>
-  <main class="wrap">
+  <main id="main-content" class="wrap">
     <h1>התשלום התקבל 🎉</h1>
     <p class="muted">
       placeholder — כאן ייכנס תהליך מסירת הגישה בפועל (תפקיד סוכן 8: מייל/
       קישור גישה לקורס). כרגע רק מסך אישור.
+    </p>
+
+    <!--
+      BUG-04 (state/BUG-LOG.md) + legal/terms.md §2.1: פרטי העוסק חייבים
+      להופיע גם באישור הרכישה עצמו, לא רק בתקנון. placeholder עד להשלמת
+      BLOCKERS.md #4. הקישור ל-`/terms` הוא forward-reference (הנתיב טרם
+      נבנה בפועל — מעקב נפרד).
+    -->
+    <p class="merchant-info small">
+      [שם עוסק / ע.מ. XXXXXXXXX] · לפרטי העסקה המלאים ראו
+      <a href="/terms">תקנון האתר</a>
     </p>
   </main>
 </BaseLayout>
@@ -22,5 +33,11 @@ import { PRODUCT } from "../../config";
   }
   .muted {
     color: var(--color-text-muted);
+  }
+  .merchant-info {
+    color: var(--color-text-muted);
+  }
+  .small {
+    font-size: 0.85rem;
   }
 </style>

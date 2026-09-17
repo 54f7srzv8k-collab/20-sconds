@@ -13,9 +13,17 @@
 
 ---
 
-## 🔴 חוסמים
+## 🔴 חוסמים (5/5 תוקנו ע"י `site-payments-lead`, 2026-09-17)
 
-### BUG-01 — רענון דף באמצע תשלום מאפס את הגנת האידמפוטנטיות
+> **עדכון סוכן 1 (2026-09-17):** תוקנו כל 5 החוסמים שסוכן 11 מצא (BUG-01 עד
+> BUG-05). לאחר כל תיקון הורצו `npm run build`, `npm run test:payments`
+> (12/12 עברו) ו-`npx tsc --noEmit` בתוך `site/` — כולם ירוקים, שום דבר לא
+> נשבר. התיקונים הם בעץ העבודה (לא קומיטו) — קבצים שהשתנו:
+> `site/src/pages/checkout/index.astro`, `site/src/pages/checkout/success.astro`,
+> `site/src/pages/index.astro`, `site/src/layouts/BaseLayout.astro`.
+> פרטי תיקון מלאים בכל סעיף למטה.
+
+### BUG-01 — רענון דף באמצע תשלום מאפס את הגנת האידמפוטנטיות — ✅ תוקן
 - **מיקום:** `site/src/pages/checkout/index.astro` שורות 51-53.
 - **תיאור:** `idempotencyKey` (וממנו `orderId`) נוצר פעם אחת **בטעינת הסקריפט**
   (`crypto.randomUUID()`), לא נשמר ב-`sessionStorage`/`localStorage`. אם
@@ -42,8 +50,17 @@
   של email+timestamp מגובה) כדי ש-refresh לא "יאבד" את ההזמנה.
 - **חוסם:** שער 2 המלא (עומס+תשלום מול ספק אמיתי) ושער 5. לא חוסם כרגע כי
   `CHECKOUT_ENABLED=false` וממילא אין תשלום אמיתי באוויר.
+- **תיקון בפועל:** `site/src/pages/checkout/index.astro` — הוצאה פונקציה
+  `loadOrCreateOrder()` שקוראת `idempotencyKey`/`orderId` מ-`sessionStorage`
+  (מפתח `wakeup_checkout_order_v1`) אם קיימים, ורק אם אין רשומה שמורה יוצרת
+  מפתח חדש ושומרת אותו מיד. כך רענון דף (או חזרה אליו באותו טאב) טוען את
+  אותה הזמנה קיימת במקום ליצור חדשה. בהצלחת תשלום (`status === "approved"`)
+  נקראת `clearOrder()` שמנקה את הרשומה מ-`sessionStorage`, כך שרכישה הבאה
+  (בטאב אחר/מאוחר יותר) מתחילה במפתח חדש. כל הגישה עטופה ב-`try/catch` כדי
+  לא לשבור את הדף בדפדפנים/מצבים שחוסמים `sessionStorage` (fallback: מפתח
+  בזיכרון בלבד, כמו קודם).
 
-### BUG-02 — אין טיפול UI במצב `pending`/`redirectUrl` (hosted checkout) — יישבר מול כל ספק אמיתי
+### BUG-02 — אין טיפול UI במצב `pending`/`redirectUrl` (hosted checkout) — יישבר מול כל ספק אמיתי — ✅ תוקן
 - **מיקום:** `site/src/pages/checkout/index.astro` שורות 84-97 (טיפול בתוצאה);
   `site/src/lib/payments/types.ts` שורות 38-56 (`ChargeStatus`, `redirectUrl`).
 - **תיאור:** ה-type `ChargeResult` תומך במפורש בסטטוס `"pending"` +
@@ -61,8 +78,18 @@
   יקרה לפני חסם #2.
 - **חוסם:** שער 2 המלא, לא חוסם היום (mock provider תמיד מחזיר סטטוס סופי,
   לא pending — ולכן גם `test:payments`/`loadtest:local` לא חושפים את זה).
+- **תיקון בפועל:** `site/src/pages/checkout/index.astro` — נוסף ענף מפורש
+  לפני הבדיקות הגנריות: אם `result.status === "pending"` וקיים
+  `result.redirectUrl`, מוצגת הודעת סטטוס ("מעבירים אותך להשלמת התשלום אצל
+  ספק הסליקה...") והדפדפן מופנה ל-`result.redirectUrl` (`window.location.href
+  = result.redirectUrl`). נוסף גם fallback טקסטואלי ל-`pending` בלי
+  `redirectUrl` (מקרה קצה תיאורטי) כדי שלא ייפול לשגיאת "משהו השתבש" הגנרית
+  והמטעה. עדיין אין דרך להריץ E2E אמיתי מול ספק שמחזיר `pending` בפועל
+  (mock תמיד מחזיר סטטוס סופי — ראה BUG-10), אז זה מאומת בקריאת קוד/build
+  בלבד, לא בבדיקה אוטומטית — יש להוסיף כיסוי כשספק אמיתי/mock עם pending
+  יהיה זמין.
 
-### BUG-03 — גילוי חובה על ביטול תוכן דיגיטלי עדיין חסר בפועל בצ'קאאוט
+### BUG-03 — גילוי חובה על ביטול תוכן דיגיטלי עדיין חסר בפועל בצ'קאאוט — ✅ תוקן
 - **מיקום:** `site/src/pages/checkout/index.astro` — אין checkbox/טקסט גילוי
   כלשהו לפני כפתור התשלום.
 - **תיאור:** אומת מחדש בקריאת קוד (2026-09-17): `legal/refund-policy.md` §4.2-
@@ -73,8 +100,16 @@
   **עדיין קיים בקוד** נכון לבדיקה זו — לא תוקן.
 - **שיוך:** סוכן 1 (יישום) + סוכן 5 (ניסוח קופי) + סוכן 10 (ניסוח משפטי מדויק).
 - **חוסם:** שער 5 (וגם שער 2 בפועל — אי אפשר לחייב כרטיס אמיתי בלי הגילוי הזה).
+- **תיקון בפועל:** `site/src/pages/checkout/index.astro` — נוסף `checkbox`
+  חובה (`id="refund-consent"`, `required`) בתוך הטופס, לפני כפתור התשלום,
+  עם הנוסח המדויק מ-`legal/refund-policy.md` §4.2 (כולל קישור ל-"מדיניות
+  הביטולים המלאה"). כפתור "שלם/י" מתחיל עם `disabled` ב-markup (הגנה גם
+  בלי JS), ובסקריפט נוספה `updatePayButtonState()` שמנטרלת/מפעילה את
+  הכפתור לפי `consentCheckbox.checked` (ומשולבת עם מצב `isSubmitting` כדי
+  לא להתנגש עם ניטרול הכפתור בזמן קריאת הרשת). כהגנת-עומק נוספת, ה-handler
+  של ה-`submit` בודק שוב את מצב ה-checkbox ומציג הודעת שגיאה אם נלחץ בעקיפין.
 
-### BUG-04 — אין slot לפרטי עוסק ב-checkout וב-success, ולא רק ב-index
+### BUG-04 — אין slot לפרטי עוסק ב-checkout וב-success, ולא רק ב-index — ✅ תוקן
 - **מיקום:** `site/src/pages/checkout/index.astro`, `site/src/pages/checkout/success.astro`.
 - **תיאור:** `legal/terms.md` §2.1 קובע במפורש: "פרטים אלה [פרטי העוסק]
   יופיעו **גם** בעמוד/תהליך הרכישה (checkout) וגם באישור הרכישה הנשלח
@@ -89,8 +124,20 @@
   BLOCKERS #4 בפועל).
 - **חוסם:** שער 5. חלקית תלוי גם ב-BLOCKERS #4 (אין עדיין את הפרטים עצמם),
   אבל חוסר ה-slot המבני הוא פער קוד עצמאי שלא תלוי בפתרון החסם.
+- **תיקון בפועל:** נוספה שורת `<p class="merchant-info small">` תמציתית עם
+  ה-placeholder `[שם עוסק / ע.מ. XXXXXXXXX]` וקישור לתקנון, גם ב-
+  `site/src/pages/checkout/index.astro` (מיד אחרי מחיר המוצר, לפני הטופס)
+  וגם ב-`site/src/pages/checkout/success.astro` (אחרי הודעת התודה). **הערה
+  חשובה:** הקישור הוא ל-`/terms`, אבל נתיב זה **עדיין לא קיים כדף באתר**
+  (רק `legal/terms.md` כקובץ מקור) — זה forward-reference עקבי עם שאר
+  ה-placeholders בקוד (כמו ה-slot ב-`index.astro` footer), אבל **צריך
+  שמישהו יבנה את `site/src/pages/terms.astro` (וכנראה גם `/refund-policy`,
+  שגם אליו יש עכשיו קישור מה-checkbox של BUG-03) לפני שער 5**, אחרת אלה
+  קישורי 404 בפרודקשן. זה מעבר להיקף 5 הבאגים הספציפיים כאן (סוכן 11 לא
+  דרש בניית דפי תקנון), אז לא נבנה כחלק מתיקון זה — מסומן כאן כפריט מעקב
+  חדש שממליץ לתאם עם סוכן 10/5 לפני שער 5.
 
-### BUG-05 — `index.astro` עדיין בלי `<main>` landmark, ואין skip-link
+### BUG-05 — `index.astro` עדיין בלי `<main>` landmark, ואין skip-link — ✅ תוקן
 - **מיקום:** `site/src/pages/index.astro` (כל הדף יושב ישירות תחת `<body>`,
   אין `<main>`); `site/src/layouts/BaseLayout.astro` (אין skip-link).
 - **תיאור:** אומת מחדש בקריאת קוד: הממצאים ב-`docs/ACCESSIBILITY-CHECKLIST.md`
@@ -100,6 +147,17 @@
 - **שיוך:** סוכן 1.
 - **חוסם:** שער 5, לפי הגדרת התפקיד המפורשת של סוכן 10 (פריטים 1+2 ברשימת
   "פעולות נדרשות לפני שער 5").
+- **תיקון בפועל:** `site/src/pages/index.astro` — כל תוכן הדף (Hero + שני
+  ה-`section`-ים) עטוף כעת ב-`<main id="main-content">` (ה-`footer` נשאר
+  מחוץ ל-`main` בכוונה, כי הוא כבר landmark נפרד — `contentinfo`).
+  `site/src/layouts/BaseLayout.astro` — נוסף skip-link
+  (`<a href="#main-content" class="skip-link">דלג לתוכן הראשי</a>`) כאלמנט
+  הראשון בתוך `<body>`, מוסתר ויזואלית (`top: -100px`) וקופץ למקומו רק
+  בקבלת פוקוס מקלדת (`:focus { top: var(--space-3) }`), עם מיקום לפי
+  `inset-inline-start` כדי לכבד RTL. כדי שה-skip-link יעבוד בפועל בכל
+  הדפים (לא רק ב-`index.astro`), נוסף `id="main-content"` גם ל-`<main>`
+  הקיים כבר ב-`checkout/index.astro`, `checkout/success.astro`
+  ו-`waitlist.astro` (עדכון עקבי, לא ממצא QA נפרד).
 
 ---
 
@@ -199,12 +257,20 @@
 
 ## סיכום מספרי
 
-- 🔴 חוסמים: **5** (BUG-01 עד BUG-05)
-- 🟡 לא-חוסמים: **6** (BUG-06 עד BUG-11)
+- 🔴 חוסמים: **5** (BUG-01 עד BUG-05) — **כולם תוקנו** ע"י `site-payments-lead`
+  ב-2026-09-17 (ראה פרטי תיקון בכל סעיף למעלה; `build`/`test:payments`/`tsc
+  --noEmit` ירוקים לאחר התיקונים).
+- 🟡 לא-חוסמים: **6** (BUG-06 עד BUG-11) — עדיין פתוחים, לא בהיקף סבב תיקון זה.
 - ⚪ לא ניתן לבדיקה: **10** תרחישים/רכיבים
 
-**מסקנה:** גם ברמת מה שכן קיים וניתן להריץ היום (mock provider + לוגיקת
-אידמפוטנטיות + שלד עמודים), נמצאו 5 פערים חוסמים אמיתיים בקוד עצמו — לא רק
-חסמים חיצוניים (ספק תשלום/וידאו/עוסק). אלה ניתנים לתיקון **גם לפני** שהחסמים
-החיצוניים נפתרים, ומומלץ לתקן אותם עכשיו כדי לא לגלות אותם שוב תחת לחץ זמן
-כשספק תשלום אמיתי יתחבר.
+**מסקנה (מעודכן 2026-09-17 ע"י site-payments-lead):** 5 החוסמים שנמצאו בקוד
+עצמו (לא תלויים בחסמים חיצוניים) תוקנו: idempotency ששורד רענון דף
+(sessionStorage), טיפול UI ב-`pending`/`redirectUrl` להכנה מראש לספקי
+hosted-checkout, checkbox חובה לגילוי ויתור זכות ביטול לפי
+`legal/refund-policy.md` §4.2, slot מבני לפרטי עוסק ב-checkout/success, ו-
+`<main>`+skip-link לנגישות. **נשאר פער עקבי חדש שנחשף תוך כדי תיקון BUG-04**:
+הקישורים ל-`/terms` ו-`/refund-policy` שנוספו לצורך הגילוי המשפטי מצביעים
+לנתיבים שעדיין לא קיימים כדפי Astro בפועל (רק כקבצי markdown ב-`legal/`) —
+יש לבנות אותם (`site/src/pages/terms.astro`, `.../refund-policy.astro`) לפני
+שער 5, אחרת אלה קישורי 404 בפרודקשן; זה מחוץ להיקף 5 הבאגים הספציפיים
+שתוקנו כאן. שאר הבאגים הלא-חוסמים (BUG-06 עד BUG-11) עדיין פתוחים.

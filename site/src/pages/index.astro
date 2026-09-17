@@ -18,27 +18,35 @@ import { PRODUCT, ctaHref } from "../config";
   title={`${PRODUCT.name} — קורס דיגיטלי`}
   description="קורס דיגיטלי קצר ב-6 שיעורים. גישה מיידית."
 >
-  <Hero
-    eyebrow="קורס דיגיטלי · 6 שיעורים"
-    headline={`${PRODUCT.name} — placeholder כותרת ראשית`}
-    subheadline="placeholder תת-כותרת — טקסט סופי ייכתב ע״י סוכן 5 אחרי אישור קול (שער 1)."
-    ctaLabel={`אני רוצה להתחיל · ${PRODUCT.priceILS} ₪`}
-    ctaHref={ctaHref()}
-  />
+  <!--
+    BUG-05 (state/BUG-LOG.md): landmark <main> חסר היה בדף בעל התנועה
+    הגבוהה ביותר באתר. עוטף את כל תוכן העמוד (חוץ מה-footer, שהוא landmark
+    נפרד, contentinfo) כדי שגם ה-skip-link ב-BaseLayout.astro וגם ניווט
+    בקורא-מסך יעבדו כראוי.
+  -->
+  <main id="main-content">
+    <Hero
+      eyebrow="קורס דיגיטלי · 6 שיעורים"
+      headline={`${PRODUCT.name} — placeholder כותרת ראשית`}
+      subheadline="placeholder תת-כותרת — טקסט סופי ייכתב ע״י סוכן 5 אחרי אישור קול (שער 1)."
+      ctaLabel={`אני רוצה להתחיל · ${PRODUCT.priceILS} ₪`}
+      ctaHref={ctaHref()}
+    />
 
-  <section class="section">
-    <h2>מה מקבלים</h2>
-    <ul>
-      {Array.from({ length: PRODUCT.lessonsCount }).map((_, i) => (
-        <li>שיעור {i + 1} — placeholder כותרת שיעור</li>
-      ))}
-    </ul>
-  </section>
+    <section class="section">
+      <h2>מה מקבלים</h2>
+      <ul>
+        {Array.from({ length: PRODUCT.lessonsCount }).map((_, i) => (
+          <li>שיעור {i + 1} — placeholder כותרת שיעור</li>
+        ))}
+      </ul>
+    </section>
 
-  <section class="section">
-    <h2>שאלות נפוצות</h2>
-    <p class="muted">placeholder — ימולא ע״י סוכן 5 / סוכן 8.</p>
-  </section>
+    <section class="section">
+      <h2>שאלות נפוצות</h2>
+      <p class="muted">placeholder — ימולא ע״י סוכן 5 / סוכן 8.</p>
+    </section>
+  </main>
 
   <footer class="legal-footer">
     <!--

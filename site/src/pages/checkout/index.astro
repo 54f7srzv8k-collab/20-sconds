@@ -15,9 +15,21 @@ if (!CHECKOUT_ENABLED) {
 ---
 
 <BaseLayout title={`רכישה — ${PRODUCT.name}`}>
-  <main class="wrap">
+  <main id="main-content" class="wrap">
     <h1>השלמת רכישה</h1>
     <p class="price">{PRODUCT.priceILS} ₪ · {PRODUCT.name}</p>
+
+    <!--
+      BUG-04 (state/BUG-LOG.md) + legal/terms.md §2.1: פרטי העוסק חייבים
+      להופיע גם בעמוד/תהליך הרכישה עצמו, לא רק בתקנון. הטקסט כאן הוא
+      placeholder עד להשלמת BLOCKERS.md #4 (זהות משפטית של העוסק); הקישור
+      לתקנון (`/terms`) הוא forward-reference — נתיב זה טרם נבנה בפועל
+      (מעקב נפרד, לא חלק מ-BUG-04 עצמו שעניינו קיום ה-slot המבני).
+    -->
+    <p class="merchant-info small">
+      [שם עוסק / ע.מ. XXXXXXXXX] · לפרטי העסקה המלאים ראו
+      <a href="/terms">תקנון האתר</a>
+    </p>
 
     <form id="checkout-form">
       <label>
@@ -34,32 +46,118 @@ if (!CHECKOUT_ENABLED) {
       </label>
 
       <!--
+        BUG-03 (state/BUG-LOG.md) + legal/refund-policy.md §4.2-4.3: גילוי
+        חובה על ויתור/הגבלת זכות הביטול לתוכן דיגיטלי, כ-checkbox חובה
+        לפני התשלום (לא כטקסט קטן בתחתית). כפתור התשלום מנוטרל עד לסימונו
+        (ראו script למטה: updatePayButtonState).
+      -->
+      <div class="consent">
+        <label class="consent-label">
+          <input type="checkbox" id="refund-consent" name="refundConsent" required />
+          <span>
+            שימי לב: זהו תוכן דיגיטלי (שיעורי וידאו) שהגישה אליו ניתנת באופן
+            מיידי לאחר התשלום. בהתאם לחוק הגנת הצרכן, ברגע שתתחילי לצפות
+            בשיעורים או להוריד אותם, זכות הביטול על עסקה זו עשויה לפקוע — גם
+            אם טרם חלפו 14 יום מהרכישה. אם טרם התחלת לצפות בתוכן, בכל מקרה
+            ניתן לבטל בתוך 14 יום כמפורט ב<a href="/refund-policy">מדיניות
+            הביטולים המלאה</a>. קראתי והבנתי.
+          </span>
+        </label>
+      </div>
+
+      <!--
         TODO(BLOCKERS.md #2): כאן ייכנס ה-widget/iframe/redirect בפועל של
         ספק התשלום שייבחר (Grow/Cardcom/Meshulam) לפי docs/ARCHITECTURE.md.
         כרגע: כפתור אחד שמדבר עם /api/checkout/create שמריץ MockPaymentProvider.
       -->
-      <button type="submit" id="pay-btn">שלם/י {PRODUCT.priceILS} ₪</button>
+      <button type="submit" id="pay-btn" disabled>שלם/י {PRODUCT.priceILS} ₪</button>
     </form>
     <p id="checkout-status" role="status" aria-live="polite"></p>
   </main>
 </BaseLayout>
 
 <script>
-  // מפתח אידמפוטנטיות נוצר פעם אחת לטעינת העמוד, ולא מתחדש בלחיצות חוזרות
-  // על אותו טופס — כך שדאבל-קליק / retry אחרי ניתוק לא פותחים חיוב כפול.
-  // ראה src/lib/payments/idempotency.ts.
-  const idempotencyKey =
-    (crypto as any).randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
-  const orderId = `order_${idempotencyKey}`;
+  // BUG-01 (state/BUG-LOG.md): idempotencyKey/orderId חייבים לשרוד רענון דף
+  // כדי שלחיצה חוזרת על "שלם/י" אחרי רענון תיחשב כאותה הזמנה מבחינת
+  // withIdempotency() בשרת, ולא תפתח חיוב כפול. נשמר ב-sessionStorage
+  // (per-tab, נמחק בסגירת הטאב — מספיק לחיי הזמנה בודדת) ונטען משם קודם
+  // כל דבר; מפתח חדש נוצר רק אם אין עדיין הזמנה פעילה בטאב הזה.
+  const ORDER_STORAGE_KEY = "wakeup_checkout_order_v1";
+
+  function loadOrCreateOrder(): { idempotencyKey: string; orderId: string } {
+    try {
+      const raw = sessionStorage.getItem(ORDER_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (
+          parsed &&
+          typeof parsed.idempotencyKey === "string" &&
+          typeof parsed.orderId === "string"
+        ) {
+          return parsed;
+        }
+      }
+    } catch {
+      // sessionStorage לא זמין (למשל private mode עם חסימת storage) — נמשיך
+      // עם מפתח בזיכרון בלבד; זה עדיין מגן מדאבל-קליק, רק לא משרוד רענון.
+    }
+    const idempotencyKey =
+      (crypto as any).randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+    const orderId = `order_${idempotencyKey}`;
+    try {
+      sessionStorage.setItem(
+        ORDER_STORAGE_KEY,
+        JSON.stringify({ idempotencyKey, orderId })
+      );
+    } catch {
+      // אין sessionStorage — ממשיכים בלי לשמור, אין מה לעשות מעבר לזה.
+    }
+    return { idempotencyKey, orderId };
+  }
+
+  function clearOrder(): void {
+    try {
+      sessionStorage.removeItem(ORDER_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+  }
+
+  const { idempotencyKey, orderId } = loadOrCreateOrder();
 
   const form = document.getElementById("checkout-form") as HTMLFormElement | null;
   const statusEl = document.getElementById("checkout-status");
   const payBtn = document.getElementById("pay-btn") as HTMLButtonElement | null;
+  const consentCheckbox = document.getElementById(
+    "refund-consent"
+  ) as HTMLInputElement | null;
+
+  // BUG-03 (state/BUG-LOG.md): כפתור התשלום מנוטרל כברירת מחדל (ראה
+  // ה-attribute `disabled` ב-markup) ומופעל רק כשה-checkbox של גילוי ויתור
+  // זכות הביטול מסומן. isSubmitting מטפל בניטרול הזמני בזמן קריאת רשת בלי
+  // "לאבד" את מצב ה-consent כשהקריאה מסתיימת.
+  let isSubmitting = false;
+
+  function updatePayButtonState(): void {
+    if (!payBtn) return;
+    payBtn.disabled = isSubmitting || !(consentCheckbox?.checked ?? false);
+  }
+
+  consentCheckbox?.addEventListener("change", updatePayButtonState);
+  updatePayButtonState();
 
   form?.addEventListener("submit", async (e) => {
     e.preventDefault();
-    if (!payBtn || payBtn.disabled) return; // הגנת idempotency גם בצד לקוח
-    payBtn.disabled = true;
+    if (!payBtn || payBtn.disabled || isSubmitting) return; // הגנת idempotency + consent גם בצד לקוח
+    if (!consentCheckbox?.checked) {
+      if (statusEl) {
+        statusEl.textContent =
+          "יש לאשר את תנאי הגילוי על ביטול תוכן דיגיטלי לפני התשלום.";
+      }
+      return;
+    }
+    isSubmitting = true;
+    updatePayButtonState();
     payBtn.textContent = "מעבד תשלום...";
     if (statusEl) statusEl.textContent = "";
 
@@ -82,9 +180,22 @@ if (!CHECKOUT_ENABLED) {
       const result = await res.json();
 
       if (result.status === "approved") {
+        clearOrder(); // ההזמנה הושלמה — פעם הבאה (רכישה חדשה) צריכה מפתח חדש
         window.location.href = "/checkout/success";
         return;
       }
+
+      // BUG-02 (state/BUG-LOG.md): טיפול UI במצב pending/redirectUrl של
+      // hosted-checkout — הספקים המועמדים בפועל (Grow/Cardcom/Meshulam)
+      // כולם מבוססי redirect, כך שזה מסלול חובה (ראה types.ts: ChargeResult).
+      if (result.status === "pending" && result.redirectUrl) {
+        if (statusEl) {
+          statusEl.textContent = "מעבירים אותך להשלמת התשלום אצל ספק הסליקה...";
+        }
+        window.location.href = result.redirectUrl;
+        return;
+      }
+
       if (statusEl) {
         statusEl.textContent =
           result.status === "declined"
@@ -93,12 +204,15 @@ if (!CHECKOUT_ENABLED) {
               ? "התשלום לקח יותר מדי זמן. נסי שוב."
               : result.status === "duplicate_ignored"
                 ? "הבקשה כבר בטיפול, רגע בבקשה..."
-                : "משהו השתבש. נסי שוב בעוד רגע.";
+                : result.status === "pending"
+                  ? "התשלום עדיין בטיפול. נא להמתין רגע ולנסות שוב."
+                  : "משהו השתבש. נסי שוב בעוד רגע.";
       }
     } catch {
       if (statusEl) statusEl.textContent = "בעיית תקשורת. נסי שוב.";
     } finally {
-      payBtn.disabled = false;
+      isSubmitting = false;
+      updatePayButtonState();
       payBtn.textContent = "שלם/י שוב";
     }
   });
@@ -113,6 +227,29 @@ if (!CHECKOUT_ENABLED) {
   .price {
     color: var(--color-text-muted);
     font-size: var(--font-size-lg);
+  }
+  .merchant-info {
+    color: var(--color-text-muted);
+  }
+  .small {
+    font-size: 0.85rem;
+  }
+  .consent {
+    margin-top: var(--space-2);
+  }
+  .consent-label {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+    cursor: pointer;
+  }
+  .consent-label input[type="checkbox"] {
+    margin-top: 0.2em;
+    width: 1.15em;
+    height: 1.15em;
+    flex: none;
   }
   form {
     display: flex;

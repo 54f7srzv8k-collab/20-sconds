@@ -26,6 +26,7 @@ const { title, description = "" } = Astro.props;
     -->
   </head>
   <body>
+    <a href="#main-content" class="skip-link">דלג לתוכן הראשי</a>
     <slot />
   </body>
 </html>
@@ -52,5 +53,25 @@ const { title, description = "" } = Astro.props;
   }
   a {
     color: inherit;
+  }
+  /*
+    Skip-link (docs/ACCESSIBILITY-CHECKLIST.md §2.2, BUG-05 ב-state/BUG-LOG.md):
+    מוסתר ויזואלית עד קבלת פוקוס (מקלדת), אז קופץ לפינת ההתחלה הלוגית של
+    הדף (inset-inline-start מכבד RTL) כדי לאפשר דילוג ישיר ל-<main>.
+  */
+  .skip-link {
+    position: absolute;
+    inset-inline-start: var(--space-3);
+    top: -100px;
+    background: var(--color-primary);
+    color: var(--color-primary-contrast);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-base);
+    z-index: 1000;
+    font-weight: 700;
+    transition: top 0.15s ease-in-out;
+  }
+  .skip-link:focus {
+    top: var(--space-3);
   }
 </style>
