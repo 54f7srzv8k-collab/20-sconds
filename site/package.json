@@ -8,14 +8,15 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "test:payments": "node scripts/test-payment-adapter.mjs",
-    "loadtest:local": "node scripts/local-load-test.mjs"
+    "test:payments": "tsx scripts/test-payment-adapter.ts",
+    "loadtest:local": "tsx scripts/local-load-test.ts"
   },
   "dependencies": {
     "astro": "^7.3.3"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.0.0",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "tsx": "^4.23.13"
   }
 }
